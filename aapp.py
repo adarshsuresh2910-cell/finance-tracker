@@ -9,6 +9,32 @@ if "transactions" not in st.session_state:
     st.session_state.transactions = []
 
 st.sidebar.header("Add Transaction")
+# ---------------- Budget Settings ----------------
+st.sidebar.markdown("---")
+st.sidebar.header("💰 Monthly Budgets")
+
+categories = [
+    "Food",
+    "Travel",
+    "Shopping",
+    "Bills",
+    "Entertainment",
+    "Education",
+    "Healthcare",
+    "Other"
+]
+
+if "budgets" not in st.session_state:
+    st.session_state.budgets = {cat: 0 for cat in categories}
+
+for cat in categories:
+    st.session_state.budgets[cat] = st.sidebar.number_input(
+        f"{cat} Budget (₹)",
+        min_value=0,
+        value=st.session_state.budgets[cat],
+        step=500,
+        key=f"budget_{cat}"
+    )
 
 amount = st.sidebar.number_input(
     "Amount (₹)",
@@ -60,6 +86,48 @@ if not df.empty:
     st.dataframe(df, use_container_width=True)
 
     st.subheader("Category Wise Spending")
+# ---------------- Budget Tracker ----------------
+st.subheader("📊 Budget Tracker")
+
+if not expense_df.empty:
+
+    budget_df = expense_df.groupby("Category")["Amount"].sum().reset_index()
+
+    for cat in categories:
+
+        spent = budget_df.loc[
+            budget_df["Category"] == cat,
+            "Amount"
+        ].sum()
+
+        budget = st.session_state.budgets.get(cat, 0)
+
+        if budget > 0:
+
+            percent = min(spent / budget, 1.0)
+
+            st.write(f"### {cat}")
+
+            col1, col2 = st.columns([4,1])
+
+            with col1:
+                st.progress(percent)
+
+            with col2:
+                st.write(f"₹{spent:.0f} / ₹{budget:.0f}")
+
+            if spent > budget:
+                st.error(
+                    f"⚠️ Budget exceeded by ₹{spent-budget:.0f}"
+                )
+            elif spent > budget * 0.8:
+                st.warning(
+                    "⚠️ You have used more than 80% of your budget."
+                )
+            else:
+                st.success(
+                    "✅ Budget is under control."
+                )
 
     expense_df = df[df["Type"] == "Expense"]
 
